@@ -7,43 +7,61 @@ const authMiddleware = require('../utils/authMiddleware');
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', async (req, res) => {
+router.post("/register", async (req, res) => {
+  console.log(req.body);
   try {
-    const { email, password } = req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      companyName,
+      industry,
+      annualRevenue,
+      selectedPlatforms,
+      agreedToTerms,
+      subscribeToUpdates,
+    } = req.body;
 
     // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ msg: 'User already exists' });
+      return res.status(400).json({ msg: "User already exists" });
     }
 
     // Create new user
     user = new User({
+      firstName,
+      lastName,
       email,
-      password
+      password,
+      companyName,
+      industry,
+      annualRevenue,
+      selectedPlatforms,
+      agreedToTerms,
+      subscribeToUpdates,
     });
 
     await user.save();
 
     // Create JWT token
     const payload = {
-      user: {
-        id: user.id
-      }
+      user: { id: user.id },
     };
 
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: "24h" },
       (err, token) => {
         if (err) throw err;
-        res.json({ token });
+        res.json({ token, user });
       }
     );
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server error');
+    res.status(500).send("Server error");
   }
 });
 
