@@ -16,7 +16,7 @@ const UserSchema = new mongoose.Schema({
   companyName: { type: String, trim: true },
   industry: { type: String, trim: true },
   annualRevenue: { type: String },
-
+  googleId: { type: String, unique: true, sparse: true },
   selectedPlatforms: { type: [String], default: [] },
   agreedToTerms: { type: Boolean, default: false },
   subscribeToUpdates: { type: Boolean, default: false },
@@ -59,8 +59,8 @@ UserSchema.pre("save", async function (next) {
 });
 
 // Method to compare passwords
-UserSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
+// UserSchema.methods.comparePassword = async function (candidatePassword) {
+//   return bcrypt.compare(candidatePassword, this.password);
+// };
 
 module.exports = mongoose.model("User", UserSchema);

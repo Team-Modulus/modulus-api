@@ -29,6 +29,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 
 app.use('/api/auth', authRoutes);
+app.use("/api/google-auth", require("./routes/googleAuth"));
 app.use('/api/google',googleAdsRoutes); // Google Ads routes);
 app.use('/api/facebook',facebookAdsRoutes); // Google Ads routes);
 
