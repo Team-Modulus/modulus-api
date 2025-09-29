@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const authMiddleware = require('../utils/authMiddleware');
+const bcrypt=require("bcryptjs")
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
@@ -72,7 +73,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.find({ email });
-    if (!user || !(await comparePassword(user.password))) {
+    if (!user || !(await bcrypt.compare(password))) {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
 
