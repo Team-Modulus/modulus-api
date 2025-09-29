@@ -24,7 +24,7 @@ router.post("/register", async (req, res) => {
     } = req.body;
 
     // Check if user already exists
-    let user = await User.findOne({ email });
+    let user = await User.find({ email });
     if (user) {
       return res.status(400).json({ msg: "User already exists" });
     }
@@ -71,7 +71,7 @@ router.post("/register", async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.find({ email });
     if (!user || !(await user.comparePassword(password))) {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
