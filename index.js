@@ -11,15 +11,15 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 
-// const corsOptions = {
-//   origin: "https://modulus-mu.vercel.app", // Allow only this origin
-//   methods: ["GET", "POST", "PUT", "DELETE"],
-//   credentials: true,
-// };
+const corsOptions = {
+  origin: "https://modulus-frontend-sand.vercel.app", // Allow only this origin
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+};
 
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 
-app.use(cors());
+// app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
