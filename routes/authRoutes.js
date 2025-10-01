@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const authMiddleware = require('../utils/authMiddleware');
 const bcrypt=require("bcryptjs")
+const admin = require("../utils/firebaseAdmin");
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
@@ -122,6 +123,69 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+
+router.post("/google-login", async (req, res) => {
+  console.log("done with it" ,req.body);
+  
+  try {
+    const { name, email, firebaseUid } = req.body;
+
+    if (!firebaseUid) {
+      return res.status(400).json({ message: "Firebase UID is required" });
+    }
+
+    // ---------------- VERIFY WITH FIREBASE ----------------
+    // It's more secure to use the ID token sent from frontend.
+    // For now, if you want to verify the UID only:
+    const userRecord = await admin.auth().getUser(firebaseUid).catch(() => null);
+console.log(userRecord,"fi");
+
+    if (!userRecord) {
+      return res.status(401).json({ message: "Invalid Firebase UID" });
+    }
+
+    // ---------------- FIND OR CREATE USER ----------------
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({
+        firstName: name || userRecord.displayName,
+        email,
+        googleId: firebaseUid,
+        avatar: userRecord.photoURL,
+        password: "qwsjsjncdkkkksjjdnnmksjjnf",
+      });
+      await user.save();
+    }
+
+    // ---------------- GENERATE JWT ----------------
+    const payload = { user: { id: user._id } };
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" },
+      (err, token) => {
+        if (err) {
+          console.error("JWT Error:", err);
+          return res.status(500).json({ error: "Token generation failed" });
+        }
+
+        // Remove password from response
+        const { password, ...userData } = user.toObject();
+
+        res.json({
+          token,
+          user: userData,
+          connectedChannels: user.connectedChannels || [],
+        });
+      }
+    );
+  } catch (err) {
+    console.error("Google login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 router.get('/userDetails',authMiddleware, async (req, res) => {
   try {
