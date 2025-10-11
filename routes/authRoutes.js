@@ -126,7 +126,7 @@ router.post("/login", async (req, res) => {
 
 
 router.post("/google-login", async (req, res) => {
-  console.log("done with it" ,req.body);
+
   
   try {
     const { name, email, firebaseUid } = req.body;
