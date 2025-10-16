@@ -23,7 +23,19 @@ app.use(cors(corsOptions));
 // app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000, // 10 seconds
+    });
+    console.log("✅ MongoDB connected successfully");
+  } catch (error) {
+    console.error("❌ MongoDB connection failed:", error.message);
+    process.exit(1);
+  }
+};
+
+connectDB();
 
 
 app.use('/api/auth', authRoutes);
@@ -35,10 +47,6 @@ app.use('/api/facebook',facebookAdsRoutes); // Google Ads routes);
 app.get('/', (req, res) => {
   res.send('Hello from the backend!');
 });
-
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("✅ MongoDB connected successfully")})
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
