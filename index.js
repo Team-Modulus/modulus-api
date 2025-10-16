@@ -24,11 +24,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI,{  useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 10000,})
-  .then(() => console.log('MongoDB Connected...'))
-  .catch(err => console.error(err));
 
 
 app.use('/api/auth', authRoutes);
@@ -40,6 +35,10 @@ app.use('/api/facebook',facebookAdsRoutes); // Google Ads routes);
 app.get('/', (req, res) => {
   res.send('Hello from the backend!');
 });
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("✅ MongoDB connected successfully")})
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
