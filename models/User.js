@@ -22,21 +22,9 @@ const UserSchema = new mongoose.Schema({
   subscribeToUpdates: { type: Boolean, default: false },
 
   connectedChannels: {
-    googleAds: {
-      accessToken: String,
-      refreshToken: String,
-      connected: { type: Boolean, default: false },
-    },
-    metaAds: {
-      accessToken: String,
-      refreshToken: String,
-      connected: { type: Boolean, default: false },
-    },
-    facebookAds: {
-      accessToken: String,
-      connected: { type: Boolean, default: false },
-      connectedAt: Date,
-    },
+    googleAds: { type: Boolean, default: false },
+    metaAds: { type: Boolean, default: false },
+    facebookAds: { type: Boolean, default: false },
   },
 
   createdAt: {
