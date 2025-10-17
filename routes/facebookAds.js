@@ -106,17 +106,25 @@ router.get('/callback', async (req, res) => {
 // Step 3: Check Facebook Connection Status
 router.get('/status', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    const isConnected = !!user.connectedChannels?.facebookAds;
-    console.log('Facebook Ads connection status:', isConnected);
+    const userId = req.user?._id || req.user?.id;
+    const user = await User.findById(userId).lean();
 
-    res.json({ isConnected });
+    const platforms = {
+      googleAds: { connected: user?.connectedChannels?.googleAds === true, connectedAt: null },
+      facebookAds: { connected: user?.connectedChannels?.facebookAds === true, connectedAt: null },
+      metaAds: { connected: user?.connectedChannels?.metaAds === true, connectedAt: null },
+    };
+
+    const connectedPlatforms = Object.entries(platforms)
+      .filter(([, v]) => v.connected === true)
+      .map(([k]) => k);
+
+    res.json({ platforms, connectedPlatforms });
   } catch (err) {
-    console.error('Error checking Facebook Ads status:', err.message);
-    res.status(500).json({ msg: 'Failed to check Facebook Ads connection' });
+    console.error('Error checking connection status:', err.message);
+    res.status(500).json({ msg: 'Failed to fetch connection status' });
   }
 });
-
 // Step 4: Fetch Ads campaigns + insights
 router.get('/ads', auth, async (req, res) => {
   try {
