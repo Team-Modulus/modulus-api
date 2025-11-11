@@ -113,6 +113,7 @@ router.get('/status', auth, async (req, res) => {
       googleAds: { connected: user?.connectedChannels?.googleAds === true, connectedAt: null },
       facebookAds: { connected: user?.connectedChannels?.facebookAds === true, connectedAt: null },
       metaAds: { connected: user?.connectedChannels?.metaAds === true, connectedAt: null },
+      shopify: { connected: user?.connectedChannels?.shopify === true, connectedAt: null },
     };
 
     const connectedPlatforms = Object.entries(platforms)

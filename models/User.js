@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema({
     googleAds: { type: Boolean, default: false },
     metaAds: { type: Boolean, default: false },
     facebookAds: { type: Boolean, default: false },
+    shopify: { type: Boolean, default: false },
   },
 
   createdAt: {

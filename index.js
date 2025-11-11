@@ -5,6 +5,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const googleAdsRoutes = require('./routes/googleAds'); // Assuming you have this route set up
 const facebookAdsRoutes = require('./routes/facebookAds'); // Assuming you have this route set up
+const shopifyRoutes = require('./routes/shopify');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -41,7 +42,8 @@ connectDB();
 app.use('/api/auth', authRoutes);
 app.use("/api/google-auth", require("./routes/googleAuth"));
 app.use('/api/google',googleAdsRoutes); // Google Ads routes);
-app.use('/api/facebook',facebookAdsRoutes); // Google Ads routes);
+app.use('/api/facebook',facebookAdsRoutes); // Facebook Ads routes);
+app.use('/api/shopify', shopifyRoutes); // Shopify routes
 
 // Basic Route
 app.get('/', (req, res) => {
