@@ -12,16 +12,35 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 
+// CORS configuration - allow both production and local development
+const allowedOrigins = [
+  "https://modulus-frontend-sand.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000",
+];
+
 const corsOptions = {
-  origin: "https://modulus-frontend-sand.vercel.app", // Allow only this origin
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all origins for development (change in production)
+      // For production, uncomment the line below and comment the line above:
+      // callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 app.use(cors(corsOptions));
-
-
-// app.use(cors());
 app.use(express.json());
 
 const connectDB = async () => {

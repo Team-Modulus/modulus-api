@@ -23,10 +23,32 @@ router.get('/connect', auth, async (req, res) => {
       });
     }
 
-    // Clean shop domain (remove .myshopify.com if present, then add it back)
-    let cleanDomain = shopDomain.replace('.myshopify.com', '').trim();
+    // Clean shop domain - handle various input formats
+    let cleanDomain = shopDomain.trim();
+    
+    // Remove admin.shopify.com/store/ prefix if present
+    cleanDomain = cleanDomain.replace(/^https?:\/\/(admin\.shopify\.com\/store\/|www\.shopify\.com\/store\/)/i, '');
+    
+    // Remove .myshopify.com if present
+    cleanDomain = cleanDomain.replace(/\.myshopify\.com$/i, '');
+    
+    // Remove any trailing slashes or paths
+    cleanDomain = cleanDomain.split('/')[0].split('?')[0];
+    
+    // Remove any special characters (keep only alphanumeric, hyphens, underscores)
+    cleanDomain = cleanDomain.replace(/[^a-zA-Z0-9\-_]/g, '');
+    
+    // Add .myshopify.com if not already present
     if (!cleanDomain.includes('.')) {
       cleanDomain = `${cleanDomain}.myshopify.com`;
+    }
+    
+    // Final validation
+    if (!cleanDomain.endsWith('.myshopify.com')) {
+      return res.status(400).json({ 
+        error: 'Invalid shop domain format',
+        message: 'Shop domain must end with .myshopify.com (e.g., mystore.myshopify.com)'
+      });
     }
     
     const state = req.user._id.toString();
@@ -38,14 +60,35 @@ router.get('/connect', auth, async (req, res) => {
       'read_inventory'
     ].join(',');
 
+    const redirectUri = SHOPIFY_REDIRECT_URI;
+    
+    if (!redirectUri) {
+      return res.status(500).json({ 
+        error: 'SHOPIFY_REDIRECT_URI is not configured',
+        message: 'Please set SHOPIFY_REDIRECT_URI in your .env file'
+      });
+    }
+    
+    // Fix redirect URI for localhost - must use http:// not https://
+    let finalRedirectUri = redirectUri;
+    if (redirectUri.includes('localhost') && redirectUri.startsWith('https://')) {
+      finalRedirectUri = redirectUri.replace('https://', 'http://');
+      console.warn("⚠️ Changed redirect URI from https:// to http:// for localhost");
+    }
+    
     const url = `https://${cleanDomain}/admin/oauth/authorize?` +
       `client_id=${process.env.SHOPIFY_API_KEY}&` +
       `scope=${scopes}&` +
-      `redirect_uri=${encodeURIComponent(SHOPIFY_REDIRECT_URI)}&` +
+      `redirect_uri=${encodeURIComponent(finalRedirectUri)}&` +
       `state=${state}`;
     
-    console.log(url, "Shopify Auth URL");
-    res.json({ url, shopDomain: cleanDomain });
+    console.log("Shopify Auth URL:", url);
+    console.log("Shop Domain:", cleanDomain);
+    console.log("Redirect URI being used:", finalRedirectUri);
+    console.log("⚠️ Make sure this EXACT redirect URI is whitelisted in your Shopify app settings!");
+    console.log("⚠️ For localhost, it MUST be http:// (not https://)");
+    
+    res.json({ url, shopDomain: cleanDomain, redirectUri: finalRedirectUri });
   } catch (err) {
     console.error('Shopify connect error:', err);
     res.status(500).json({ error: 'Failed to generate Shopify OAuth URL' });
@@ -113,16 +156,20 @@ router.get('/callback', async (req, res) => {
       shopifyAccount.shops.push({
         shopId: shopInfo.id.toString(),
         shopDomain: shop,
-        shopName: shopInfo.name,
+        shopName: shopInfo.name, // Store name from Shopify
         email: shopInfo.email,
         currency: shopInfo.currency,
         timezone: shopInfo.timezone,
+        // Additional store info available from shopInfo:
+        // domain: shopInfo.domain,
+        // phone: shopInfo.phone,
+        // plan_name: shopInfo.plan_name,
         connected: true,
         lastFetched: new Date()
       });
     } else {
       // Update existing shop
-      existingShop.shopName = shopInfo.name;
+      existingShop.shopName = shopInfo.name; // Store name
       existingShop.email = shopInfo.email;
       existingShop.currency = shopInfo.currency;
       existingShop.timezone = shopInfo.timezone;
@@ -150,15 +197,29 @@ router.get("/shops", auth, async (req, res) => {
     // 1️⃣ Find Shopify account doc
     let shopifyAccount = await ShopifyAccount.findOne({ userId: req.user._id });
     if (!shopifyAccount) {
-      return res.status(400).json({ error: "Shopify not connected" });
+      return res.status(400).json({ 
+        error: "Shopify not connected",
+        shops: [] // Always return shops array
+      });
     }
 
     if (!shopifyAccount.accessToken) {
-      return res.status(400).json({ error: "Access token not found" });
+      return res.status(400).json({ 
+        error: "Access token not found",
+        shops: shopifyAccount.shops || [] // Return existing shops if any
+      });
     }
 
     const accessToken = shopifyAccount.accessToken;
     const shopDomain = shopifyAccount.shopDomain;
+
+    if (!shopDomain) {
+      console.error("Shop domain not found in Shopify account");
+      return res.json({
+        message: "Shop domain not found, using cached data",
+        shops: shopifyAccount.shops || [],
+      });
+    }
 
     // 2️⃣ Get shop info from Shopify API
     try {
@@ -175,7 +236,7 @@ router.get("/shops", auth, async (req, res) => {
 
       // 3️⃣ Get existing connected shop IDs from DB
       const existingShopsMap = {};
-      shopifyAccount.shops.forEach(shop => {
+      (shopifyAccount.shops || []).forEach(shop => {
         existingShopsMap[shop.shopId || shop.shopDomain] = shop.connected || false;
       });
 
@@ -183,15 +244,28 @@ router.get("/shops", auth, async (req, res) => {
       const formattedShop = {
         shopId: shopInfo.id.toString(),
         shopDomain: shopDomain,
-        shopName: shopInfo.name,
+        shopName: shopInfo.name, // Store name from Shopify
         email: shopInfo.email,
         currency: shopInfo.currency || 'USD',
         timezone: shopInfo.timezone || 'UTC',
+        // Additional store information available:
+        // domain: shopInfo.domain,
+        // phone: shopInfo.phone,
+        // address1: shopInfo.address1,
+        // city: shopInfo.city,
+        // province: shopInfo.province,
+        // country: shopInfo.country,
+        // zip: shopInfo.zip,
+        // plan_name: shopInfo.plan_name,
         connected: existingShopsMap[shopInfo.id.toString()] || existingShopsMap[shopDomain] || false,
         lastFetched: new Date()
       };
 
       // 5️⃣ Check if shop already exists in array
+      if (!shopifyAccount.shops) {
+        shopifyAccount.shops = [];
+      }
+
       const shopIndex = shopifyAccount.shops.findIndex(
         s => (s.shopId === formattedShop.shopId) || (s.shopDomain === formattedShop.shopDomain)
       );
@@ -211,24 +285,41 @@ router.get("/shops", auth, async (req, res) => {
       // 7️⃣ Return shops
       res.json({
         message: "Shopify shops fetched successfully",
-        shops: shopifyAccount.shops,
+        shops: shopifyAccount.shops || [],
       });
     } catch (apiErr) {
-      console.error("Shopify API error:", apiErr.response?.data || apiErr.message);
+      console.error("Shopify API error:", {
+        status: apiErr.response?.status,
+        statusText: apiErr.response?.statusText,
+        data: apiErr.response?.data,
+        message: apiErr.message,
+        shopDomain: shopDomain
+      });
       
-      // Return existing shops from DB if API call fails
-      if (shopifyAccount.shops && shopifyAccount.shops.length > 0) {
+      // Always return shops from DB if API call fails (even if empty array)
+      const shops = shopifyAccount.shops || [];
+      
+      if (shops.length > 0) {
         return res.json({
-          message: "Using cached shop data",
-          shops: shopifyAccount.shops,
+          message: "Using cached shop data (API call failed)",
+          shops: shops,
+          warning: "Unable to refresh shop data from Shopify API"
         });
       }
       
-      return res.status(500).json({ error: "Failed to fetch shop info from Shopify API" });
+      // If no shops in DB, return empty array with helpful message
+      return res.json({
+        message: "No shops found. Please reconnect your Shopify account.",
+        shops: [],
+        error: apiErr.response?.data?.errors || apiErr.message
+      });
     }
   } catch (err) {
     console.error("❌ Shopify shops fetch error:", err.response?.data || err.message);
-    res.status(500).json({ error: "Failed to fetch Shopify shops" });
+    res.status(500).json({ 
+      error: "Failed to fetch Shopify shops",
+      shops: [] // Always return shops array
+    });
   }
 });
 
